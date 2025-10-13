@@ -1,12 +1,9 @@
-import { Component, ElementRef, ViewChild, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { v4 as uuid } from 'uuid';
-import { AuthService } from '../core/auth.service';
-import { CryptoService } from '../core/crypto.service';
+import { Component, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { VaultItem, VaultPayload, VaultService } from '../core/vault.service';
 
-type VaultEntry = { id: string; title: string; url?: string; username: string; password: string; notes?: string; };
-type VaultBlob = string; // iv:cipher base64
+type VaultDraft = Partial<VaultItem> & { id?: number };
 
 @Component({
   standalone: true,
@@ -44,42 +41,49 @@ type VaultBlob = string; // iv:cipher base64
       </div>
     </section>
 
-    <ng-container *ngIf="visibleEntries.length; else emptyState">
-      <div class="grid">
-        <article class="card" *ngFor="let entry of visibleEntries">
-          <header>
-            <div>
-              <h3>{{ entry.title }}</h3>
-              <p class="muted" *ngIf="entry.url">{{ entry.url }}</p>
-            </div>
-            <button class="icon-btn" (click)="toggleReveal(entry.id)" [attr.aria-label]="show[entry.id] ? 'Passwort verbergen' : 'Passwort anzeigen'">
-              {{ show[entry.id] ? '🙈' : '👁️' }}
-            </button>
-          </header>
+    <p class="error-banner" *ngIf="listError">{{ listError }}</p>
 
-          <dl>
-            <div>
-              <dt>Benutzername</dt>
-              <dd>{{ entry.username }}</dd>
-            </div>
-            <div>
-              <dt>Passwort</dt>
-              <dd class="password-line">
-                <input [type]="show[entry.id] ? 'text' : 'password'" [value]="entry.password" readonly>
-                <button class="link" type="button" (click)="copy(entry.password)">Kopieren</button>
-              </dd>
-            </div>
-          </dl>
+    <ng-container *ngIf="!loadingList; else loadingState">
+      <ng-container *ngIf="visibleEntries.length; else emptyState">
+        <div class="grid">
+          <article class="card" *ngFor="let entry of visibleEntries">
+            <header>
+              <div>
+                <h3>{{ entry.title }}</h3>
+                <p class="muted" *ngIf="entry.url">{{ entry.url }}</p>
+              </div>
+              <button class="icon-btn" (click)="toggleReveal(entry.id)" [attr.aria-label]="show[entry.id] ? 'Passwort verbergen' : 'Passwort anzeigen'">
+                {{ show[entry.id] ? '🙈' : '👁️' }}
+              </button>
+            </header>
 
-          <p *ngIf="entry.notes" class="notes">{{ entry.notes }}</p>
+            <dl>
+              <div>
+                <dt>Benutzername</dt>
+                <dd>{{ entry.username }}</dd>
+              </div>
+              <div>
+                <dt>Passwort</dt>
+                <dd class="password-line">
+                  <input [type]="show[entry.id] ? 'text' : 'password'" [value]="entry.password" readonly>
+                  <button class="link" type="button" (click)="copy(entry.password)">Kopieren</button>
+                </dd>
+              </div>
+            </dl>
 
-          <footer>
-            <button type="button" class="outline" (click)="edit(entry)">Bearbeiten</button>
-            <button type="button" class="danger" (click)="remove(entry)">Löschen</button>
-          </footer>
-        </article>
-      </div>
+            <p *ngIf="entry.notes" class="notes">{{ entry.notes }}</p>
+
+            <footer>
+              <button type="button" class="outline" (click)="edit(entry)">Bearbeiten</button>
+              <button type="button" class="danger" (click)="remove(entry)" [disabled]="deletingId === entry.id">
+                {{ deletingId === entry.id ? '...' : 'Löschen' }}
+              </button>
+            </footer>
+          </article>
+        </div>
+      </ng-container>
     </ng-container>
+
     <ng-template #emptyState>
       <div class="empty">
         <h3>Kein Eintrag vorhanden</h3>
@@ -88,8 +92,14 @@ type VaultBlob = string; // iv:cipher base64
       </div>
     </ng-template>
 
+    <ng-template #loadingState>
+      <div class="empty">
+        <h3>Lade Tresor…</h3>
+      </div>
+    </ng-template>
+
     <dialog #entryDialog>
-      <form method="dialog" (submit)="save()">
+      <form method="dialog" (submit)="save(); $event.preventDefault();" novalidate>
         <h2>{{ current?.id ? 'Eintrag bearbeiten' : 'Neuer Eintrag' }}</h2>
         <label>
           Titel
@@ -114,9 +124,10 @@ type VaultBlob = string; // iv:cipher base64
           Notizen
           <textarea [(ngModel)]="current!.notes" name="notes" rows="3"></textarea>
         </label>
+        <p class="error-banner small" *ngIf="formError">{{ formError }}</p>
         <menu>
           <button type="button" class="outline" (click)="closeDialog()">Abbrechen</button>
-          <button type="submit" class="primary">Speichern</button>
+          <button type="submit" class="primary" [disabled]="saving">{{ saving ? 'Speichert…' : 'Speichern' }}</button>
         </menu>
       </form>
     </dialog>
@@ -145,6 +156,9 @@ type VaultBlob = string; // iv:cipher base64
     .generator .generated{flex:1;min-width:200px;padding:10px 12px;border:1px solid #d1d5db;border-radius:999px;background:#fff;font-family:monospace}
     .copy-status{margin:0;color:#16a34a;font-size:13px;font-weight:500}
     .copy-status.error{color:#dc2626}
+
+    .error-banner{padding:12px 16px;border-radius:12px;background:#fee2e2;color:#b91c1c}
+    .error-banner.small{margin:0;background:#fef2f2}
 
     .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
     .card{border:1px solid #e5e7eb;border-radius:20px;padding:18px 20px;background:#fff;box-shadow:0 8px 20px rgba(15,23,42,0.06);display:flex;flex-direction:column;gap:12px}
@@ -177,43 +191,29 @@ type VaultBlob = string; // iv:cipher base64
     .row button{border-radius:12px;background:#111827;color:#fff;padding:8px 12px;border:none}
   `]
 })
-export class VaultComponent {
-  private auth = inject(AuthService);
-  private crypto = inject(CryptoService);
+export class VaultComponent implements OnInit {
+  private vault = inject(VaultService);
   @ViewChild('entryDialog') private entryDialog?: ElementRef<HTMLDialogElement>;
 
-  private STORAGE_KEY = 'pm_vault_blob';
-  entries: VaultEntry[] = [];
-  show: Record<string, boolean> = {};
-  current: VaultEntry | null = null;
+  entries: VaultItem[] = [];
+  current: VaultDraft | null = null;
   query = '';
+  show: Record<number, boolean> = {};
   generated = '';
   genLen = 16;
   copyMessage = '';
+  listError = '';
+  formError = '';
+  loadingList = false;
+  saving = false;
+  deletingId: number | null = null;
   private copyTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(){ this.load(); }
-
-  async load(){
-    const key = await this.auth.getSessionKey();
-    if (!key) return;
-    const blob = localStorage.getItem(this.STORAGE_KEY);
-    if (!blob) { this.entries = []; return; }
-    try {
-      this.entries = await this.crypto.decryptJson<VaultEntry[]>(key, blob);
-    } catch {
-      // Key passt nicht -> als Schutz nichts laden
-      this.entries = [];
-    }
+  async ngOnInit(): Promise<void> {
+    await this.loadEntries();
   }
 
-  async persist(){
-    const key = await this.auth.getSessionKey(); if (!key) return;
-    const blob = await this.crypto.encryptJson(key, this.entries);
-    localStorage.setItem(this.STORAGE_KEY, blob);
-  }
-
-  get visibleEntries(): VaultEntry[] {
+  get visibleEntries(): VaultItem[] {
     const q = this.query.toLowerCase().trim();
     return !q ? this.entries : this.entries.filter(entry =>
       [entry.title, entry.url ?? '', entry.username, entry.notes ?? '']
@@ -221,54 +221,106 @@ export class VaultComponent {
     );
   }
 
-  openNew(){
-    this.current = { id: '', title:'', url:'', username:'', password:this.generate(16), notes:'' };
+  async loadEntries(): Promise<void> {
+    this.loadingList = true;
+    this.listError = '';
+    try {
+      this.entries = await this.vault.list();
+    } catch {
+      this.listError = 'Einträge konnten nicht geladen werden.';
+      this.entries = [];
+    } finally {
+      this.loadingList = false;
+    }
+  }
+
+  openNew(): void {
+    this.current = { title: '', url: '', username: '', password: this.generate(16), notes: '' };
+    this.formError = '';
     this.openDialog();
   }
-  edit(entry: VaultEntry){
+
+  edit(entry: VaultItem): void {
     this.current = { ...entry };
+    this.formError = '';
     this.openDialog();
   }
-  private openDialog(){
+
+  private openDialog(): void {
     this.entryDialog?.nativeElement.showModal();
   }
-  closeDialog(){
+
+  closeDialog(): void {
     this.entryDialog?.nativeElement.close();
     this.current = null;
+    this.formError = '';
   }
 
-  async save(){
+  async save(): Promise<void> {
     if (!this.current) return;
-    if (!this.current.id) this.current.id = uuid();
-    const idx = this.entries.findIndex(x => x.id === this.current!.id);
-    if (idx >= 0) this.entries[idx] = this.current!;
-    else this.entries.unshift(this.current!);
-    this.current = null;
-    this.closeDialog();
-    await this.persist();
-  }
-  async remove(entry: VaultEntry){
-    this.entries = this.entries.filter(x => x.id !== entry.id);
-    await this.persist();
+    const payload: VaultPayload = {
+      title: (this.current.title ?? '').trim(),
+      username: (this.current.username ?? '').trim(),
+      password: this.current.password ?? '',
+      url: this.normalizeOptional(this.current.url),
+      notes: this.normalizeOptional(this.current.notes)
+    };
+
+    if (!payload.title || !payload.username || !payload.password) {
+      this.formError = 'Titel, Benutzername und Passwort sind erforderlich.';
+      return;
+    }
+
+    this.saving = true;
+    try {
+      if (this.current.id != null) {
+        const updated = await this.vault.update(this.current.id, payload);
+        this.entries = this.entries.map(entry => entry.id === updated.id ? updated : entry);
+      } else {
+        const created = await this.vault.create(payload);
+        this.entries = [created, ...this.entries];
+      }
+      this.closeDialog();
+    } catch {
+      this.formError = 'Speichern fehlgeschlagen.';
+    } finally {
+      this.saving = false;
+    }
   }
 
-  toggleReveal(id: string){
+  async remove(entry: VaultItem): Promise<void> {
+    if (this.deletingId === entry.id) return;
+    this.deletingId = entry.id;
+    this.listError = '';
+    try {
+      await this.vault.delete(entry.id);
+      this.entries = this.entries.filter(item => item.id !== entry.id);
+    } catch {
+      this.listError = 'Eintrag konnte nicht gelöscht werden.';
+    } finally {
+      this.deletingId = null;
+    }
+  }
+
+  toggleReveal(id: number): void {
     this.show[id] = !this.show[id];
   }
 
-  generate(len=16){
+  generate(len = 16): string {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{};:,.?';
-    let out=''; const arr = new Uint32Array(len);
+    let out = '';
+    const arr = new Uint32Array(len);
     const cryptoObj = globalThis.crypto;
     if (cryptoObj?.getRandomValues) {
       cryptoObj.getRandomValues(arr);
+      for (let i = 0; i < len; i++) out += chars[arr[i] % chars.length];
     } else {
-      for (let i = 0; i < len; i++) arr[i] = Math.floor(Math.random() * chars.length);
+      for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
     }
-    for (let i=0;i<len;i++) out += chars[arr[i] % chars.length];
     return out;
   }
-  async copy(text:string){
+
+  async copy(text: string): Promise<void> {
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
@@ -278,9 +330,14 @@ export class VaultComponent {
     }
   }
 
-  private setCopyMessage(message: string){
+  private setCopyMessage(message: string): void {
     this.copyMessage = message;
     if (this.copyTimer) clearTimeout(this.copyTimer);
     this.copyTimer = setTimeout(() => this.copyMessage = '', 2500);
+  }
+
+  private normalizeOptional(value: string | undefined): string | undefined {
+    const trimmed = (value ?? '').trim();
+    return trimmed ? trimmed : undefined;
   }
 }

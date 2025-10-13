@@ -57,14 +57,20 @@ export class RegisterComponent {
     }
     this.loading = true;
     try {
-      await this.auth.register(this.email, this.password);
-      const result = await this.auth.login(this.email, this.password);
-      if (result === 'OK' || result === 'TWOFA_REQUIRED') {
-        await this.router.navigateByUrl(result === 'TWOFA_REQUIRED' ? '/totp-setup' : '/vault');
+      const result = await this.auth.register(this.email, this.password);
+      if (result === 'SUCCESS') {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.setItem('pm_prefill_email', this.email);
+        }
+        await this.router.navigateByUrl('/login');
         return;
       }
-      this.error = 'Login nach Registrierung fehlgeschlagen.';
-    } catch (e: unknown) {
+      if (result === 'EMAIL_EXISTS') {
+        this.error = 'Diese E-Mail-Adresse ist bereits vergeben.';
+        return;
+      }
+      this.error = 'Registrierung derzeit nicht möglich.';
+    } catch {
       this.error = 'Registrierung fehlgeschlagen.';
     } finally {
       this.loading = false;
