@@ -20,7 +20,7 @@ RUN npm ci --legacy-peer-deps
 # Quellcode & Build
 COPY frontend ./
 # Falls du ein anderes Config-Target nutzt, hier anpassen
-RUN npm run build -- --configuration production
+RUN npm run build
 
 # -------- Stage 2: Runtime (Nginx) --------
 FROM nginx:stable-alpine
@@ -33,7 +33,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 RUN rm -rf /usr/share/nginx/html/*
 # Achtung: Hier wird der Browser-Build erwartet unter dist/frontend/
 # (genau so wie in angular.json -> options.outputPath)
-COPY --from=build /app/dist/frontend/ /usr/share/nginx/html
+COPY --from=build /app/dist/frontend/browser/ /usr/share/nginx/html
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
