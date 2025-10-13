@@ -1,28 +1,39 @@
 ###
-# Dockerfile für das Angular-Frontend.
-# Baut das Projekt in einem Node-Container und serviert das Ergebnis über NGINX.
+# Dockerfile – Angular SPA über Nginx ausliefern
+# Struktur erwartet:
+#   /Dockerfile
+#   /nginx.conf
+#   /frontend/ (Angular-Projekt)
+#
+# Wichtig: In frontend/angular.json sollte der Browser-Build ohne SSR
+#          auf "outputPath": "dist/frontend" zeigen.
 ###
 
-## Build-Stage
-FROM node:20-alpine AS builder
+# -------- Stage 1: Build --------
+FROM node:20-alpine AS build
 WORKDIR /app
 
-# Nur package-Dateien kopieren, damit npm ci gecacht werden kann.
+# Nur package-Dateien (besseres Caching)
 COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
 
-# Projektdateien kopieren und Produktions-Build erstellen.
+# Quellcode & Build
 COPY frontend ./
+# Falls du ein anderes Config-Target nutzt, hier anpassen
 RUN npm run build -- --configuration production
 
-## Runtime-Stage
-FROM nginx:stable-alpine AS runtime
+# -------- Stage 2: Runtime (Nginx) --------
+FROM nginx:stable-alpine
 
-# Static Build nach NGINX-Webroot kopieren.
-COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/html
+# Eigene Nginx-Config mit SPA-Routing
+# (Datei muss im Repo-Root liegen)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# NGINX-Ausgabeport dokumentieren.
+# Nginx-Default-Inhalte entfernen und unsere App deployen
+RUN rm -rf /usr/share/nginx/html/*
+# Achtung: Hier wird der Browser-Build erwartet unter dist/frontend/
+# (genau so wie in angular.json -> options.outputPath)
+COPY --from=build /app/dist/frontend/ /usr/share/nginx/html
+
 EXPOSE 80
-
-# Standardkommando von NGINX beibehalten.
 CMD ["nginx", "-g", "daemon off;"]
