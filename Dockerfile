@@ -31,9 +31,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Nginx-Default-Inhalte entfernen und unsere App deployen
 RUN rm -rf /usr/share/nginx/html/*
-# Achtung: Hier wird der Browser-Build erwartet unter dist/frontend/
-# (genau so wie in angular.json -> options.outputPath)
-COPY --from=build /app/dist/frontend/ /usr/share/nginx/html
+# Achtung: Hier wird der Browser-Build erwartet unter dist/frontend/browser/
+# (genau so wie Angular ihn erzeugt). Wir kopieren nur die Browser-Assets
+# direkt in den Nginx-Root, damit index.html an der Wurzel liegt.
+COPY --from=build /app/dist/frontend/browser/ /usr/share/nginx/html/
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
