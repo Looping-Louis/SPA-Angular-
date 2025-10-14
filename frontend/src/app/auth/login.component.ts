@@ -67,6 +67,7 @@ export class LoginComponent implements OnInit {
 
   async submit(): Promise<void> {
     this.error = '';
+    this.info = '';
     this.loading = true;
     try {
       if (!this.need2fa) {
@@ -78,6 +79,7 @@ export class LoginComponent implements OnInit {
         if (result === 'TWOFA_REQUIRED') {
           this.need2fa = true;
           this.otp = '';
+          this.info = 'Bitte gib jetzt deinen 2FA-Code ein.';
           return;
         }
         if (result === 'INVALID_CREDENTIALS') {
