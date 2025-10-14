@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -18,20 +18,23 @@ type SessionState = SessionPayload;
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly SESSION_KEY = 'pm_session_v2';
-  private readonly TMP_TOKEN_KEY = 'pm_tmp_token';
   private readonly isBrowser = typeof window !== 'undefined';
-  private readonly router = inject(Router);
-  private readonly http = inject(HttpClient);
-  private readonly apiBaseUrl = inject(API_BASE_URL);
-  private session: SessionState | null = this.restoreSession();
-  private tmpToken: string | null = this.restoreTmpToken();
+  private session: SessionState | null;
+  private tmpToken: string | null = null;
+
+  constructor(
+    private readonly router: Router,
+    private readonly http: HttpClient,
+    @Inject(API_BASE_URL) private readonly apiBaseUrl: string
+  ) {
+    this.session = this.restoreSession();
+  }
 
   async register(email: string, password: string): Promise<RegisterResult> {
     try {
       await firstValueFrom(
         this.http.post<void>(`${this.apiBaseUrl}/auth/register`, { email, password })
       );
-      this.persistTmpToken(null);
       return 'SUCCESS';
     } catch (error: unknown) {
       const code = this.mapError(error);
@@ -41,20 +44,17 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<LoginResult> {
-    this.persistTmpToken(null);
     try {
       const response = await firstValueFrom(
         this.http.post<LoginResponse>(`${this.apiBaseUrl}/auth/login`, { email, password })
       );
       if ('tmpToken' in response) {
-        this.persistTmpToken(response.tmpToken);
+        this.tmpToken = response.tmpToken;
         return 'TWOFA_REQUIRED';
       }
       this.persistSession(response);
-      this.persistTmpToken(null);
       return 'OK';
     } catch (error: unknown) {
-      this.persistTmpToken(null);
       const code = this.mapError(error);
       if (code === 'INVALID_CREDENTIALS') return 'INVALID_CREDENTIALS';
       return 'SERVER_ERROR';
@@ -71,7 +71,7 @@ export class AuthService {
         })
       );
       this.persistSession(response);
-      this.persistTmpToken(null);
+      this.tmpToken = null;
       return 'OK';
     } catch (error: unknown) {
       const code = this.mapError(error);
@@ -115,13 +115,6 @@ export class AuthService {
     window.localStorage.setItem(this.SESSION_KEY, JSON.stringify(payload));
   }
 
-  private persistTmpToken(value: string | null): void {
-    this.tmpToken = value;
-    if (!this.isBrowser) return;
-    if (value) window.sessionStorage.setItem(this.TMP_TOKEN_KEY, value);
-    else window.sessionStorage.removeItem(this.TMP_TOKEN_KEY);
-  }
-
   private restoreSession(): SessionState | null {
     if (!this.isBrowser) return null;
     try {
@@ -132,14 +125,9 @@ export class AuthService {
     }
   }
 
-  private restoreTmpToken(): string | null {
-    if (!this.isBrowser) return null;
-    return window.sessionStorage.getItem(this.TMP_TOKEN_KEY);
-  }
-
   private clearSession(): void {
     this.session = null;
-    this.persistTmpToken(null);
+    this.tmpToken = null;
     if (this.isBrowser) {
       window.localStorage.removeItem(this.SESSION_KEY);
     }
