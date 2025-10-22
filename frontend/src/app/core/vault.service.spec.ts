@@ -1,17 +1,17 @@
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { API_BASE_URL } from './api.config';
+import { API_GRAPHQL_URL } from './api.config';
 import { VaultItem, VaultPayload, VaultService } from './vault.service';
 
 describe('VaultService', () => {
-  const apiBase = 'https://api.example.test';
+  const graphqlUrl = 'https://graphql.example.test/graphql';
   let service: VaultService;
   let http: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [{ provide: API_BASE_URL, useValue: apiBase }]
+      providers: [{ provide: API_GRAPHQL_URL, useValue: graphqlUrl }]
     });
 
     service = TestBed.inject(VaultService);
@@ -22,20 +22,21 @@ describe('VaultService', () => {
     http.verify();
   });
 
-  it('list requests the vault collection', async () => {
+  it('list requests the vault collection via GraphQL', async () => {
     const promise = service.list();
-    const req = http.expectOne(`${apiBase}/vault`);
-    expect(req.request.method).toBe('GET');
+    const req = http.expectOne(graphqlUrl);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.query).toContain('query VaultItems');
 
     const payload: VaultItem[] = [
-      { id: 1, title: 'Email', username: 'user', password: 'secret' }
+      { id: 1, title: 'Email', username: 'user', password: 'secret', url: undefined, notes: undefined }
     ];
-    req.flush(payload);
+    req.flush({ data: { vaultItems: payload } });
 
     await expectAsync(promise).toBeResolvedTo(payload);
   });
 
-  it('create posts a new entry', async () => {
+  it('create calls the GraphQL mutation and returns the created entry', async () => {
     const input: VaultPayload = {
       title: 'Shop',
       username: 'buyer',
@@ -45,42 +46,46 @@ describe('VaultService', () => {
     };
 
     const promise = service.create(input);
-    const req = http.expectOne(`${apiBase}/vault`);
+    const req = http.expectOne(graphqlUrl);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(input);
+    expect(req.request.body.query).toContain('mutation CreateVaultItem');
+    expect(req.request.body.variables).toEqual({ input });
 
     const created: VaultItem = { id: 2, ...input };
-    req.flush(created);
+    req.flush({ data: { createVaultItem: created } });
 
     await expectAsync(promise).toBeResolvedTo(created);
   });
 
-  it('update puts the partial payload for an entry', async () => {
+  it('update calls the GraphQL mutation with id and payload', async () => {
     const patch: Partial<VaultPayload> = { username: 'new-user', notes: 'Updated' };
     const promise = service.update(3, patch);
-    const req = http.expectOne(`${apiBase}/vault/3`);
-    expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual(patch);
+    const req = http.expectOne(graphqlUrl);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.query).toContain('mutation UpdateVaultItem');
+    expect(req.request.body.variables).toEqual({ id: '3', input: patch });
 
     const updated: VaultItem = {
       id: 3,
       title: 'Bank',
       username: 'new-user',
       password: 'pass',
+      url: undefined,
       notes: 'Updated'
     };
-    req.flush(updated);
+    req.flush({ data: { updateVaultItem: updated } });
 
     await expectAsync(promise).toBeResolvedTo(updated);
   });
 
-  it('delete removes an entry by id', async () => {
+  it('delete invokes the GraphQL mutation and resolves', async () => {
     const promise = service.delete(4);
-    const req = http.expectOne(`${apiBase}/vault/4`);
-    expect(req.request.method).toBe('DELETE');
-    expect(req.request.body).toBeNull();
+    const req = http.expectOne(graphqlUrl);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.query).toContain('mutation DeleteVaultItem');
+    expect(req.request.body.variables).toEqual({ id: '4' });
 
-    req.flush(null);
+    req.flush({ data: { deleteVaultItem: true } });
     await expectAsync(promise).toBeResolved();
   });
 });

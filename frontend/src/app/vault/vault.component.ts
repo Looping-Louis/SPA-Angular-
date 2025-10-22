@@ -99,37 +99,39 @@ type VaultDraft = Partial<VaultItem> & { id?: number };
     </ng-template>
 
     <dialog #entryDialog>
-      <form method="dialog" (submit)="save(); $event.preventDefault();" novalidate>
-        <h2>{{ current?.id ? 'Eintrag bearbeiten' : 'Neuer Eintrag' }}</h2>
-        <label>
-          Titel
-          <input [(ngModel)]="current!.title" name="title" required>
-        </label>
-        <label>
-          Website / URL
-          <input [(ngModel)]="current!.url" name="url">
-        </label>
-        <label>
-          Benutzername
-          <input [(ngModel)]="current!.username" name="username" required>
-        </label>
-        <label>
-          Passwort
-          <div class="row">
-            <input [(ngModel)]="current!.password" name="password" required>
-            <button type="button" (click)="current!.password = generate(16)">Neu</button>
-          </div>
-        </label>
-        <label>
-          Notizen
-          <textarea [(ngModel)]="current!.notes" name="notes" rows="3"></textarea>
-        </label>
-        <p class="error-banner small" *ngIf="formError">{{ formError }}</p>
-        <menu>
-          <button type="button" class="outline" (click)="closeDialog()">Abbrechen</button>
-          <button type="submit" class="primary" [disabled]="saving">{{ saving ? 'Speichert…' : 'Speichern' }}</button>
-        </menu>
-      </form>
+      <ng-container *ngIf="current as model">
+        <form method="dialog" (submit)="save(); $event.preventDefault();" novalidate>
+          <h2>{{ model.id ? 'Eintrag bearbeiten' : 'Neuer Eintrag' }}</h2>
+          <label>
+            Titel
+            <input [(ngModel)]="model.title" name="title" required>
+          </label>
+          <label>
+            Website / URL
+            <input [(ngModel)]="model.url" name="url">
+          </label>
+          <label>
+            Benutzername
+            <input [(ngModel)]="model.username" name="username" required>
+          </label>
+          <label>
+            Passwort
+            <div class="row">
+              <input [(ngModel)]="model.password" name="password" required>
+              <button type="button" (click)="model.password = generate(16)">Neu</button>
+            </div>
+          </label>
+          <label>
+            Notizen
+            <textarea [(ngModel)]="model.notes" name="notes" rows="3"></textarea>
+          </label>
+          <p class="error-banner small" *ngIf="formError">{{ formError }}</p>
+          <menu>
+            <button type="button" class="outline" (click)="closeDialog()">Abbrechen</button>
+            <button type="submit" class="primary" [disabled]="saving">{{ saving ? 'Speichert…' : 'Speichern' }}</button>
+          </menu>
+        </form>
+      </ng-container>
     </dialog>
   </section>
   `,
