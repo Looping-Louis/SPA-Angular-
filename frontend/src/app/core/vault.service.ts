@@ -19,15 +19,22 @@ type GraphqlResponse<T> = {
   errors?: Array<{ message: string }>;
 };
 
-type VaultItemGraph = VaultItem & { id: number | string };
+type VaultItemGraph = {
+  id: number | string;
+  titleEnc: string;
+  usernameEnc: string;
+  passwordEnc: string;
+  urlEnc?: string | null;
+  notesEnc?: string | null;
+};
 
 const ITEM_FIELDS = `
   id
-  title
-  username
-  password
-  url
-  notes
+  titleEnc
+  usernameEnc
+  passwordEnc
+  urlEnc
+  notesEnc
 `;
 
 @Injectable({ providedIn: 'root' })
@@ -53,13 +60,13 @@ export class VaultService {
   async create(payload: VaultPayload): Promise<VaultItem> {
     const result = await this.execute<{ createVaultItem: VaultItemGraph }>(
       `
-      mutation CreateVaultItem($input: VaultUpsertInput!) {
+      mutation CreateVaultItem($input: VaultUpsertEncInput!) {
         createVaultItem(input: $input) {
           ${ITEM_FIELDS}
         }
       }
       `,
-      { input: payload }
+      { input: this.toGraphInput(payload) }
     );
     return this.normalize(result.createVaultItem);
   }
@@ -67,13 +74,13 @@ export class VaultService {
   async update(id: number, payload: Partial<VaultPayload>): Promise<VaultItem> {
     const result = await this.execute<{ updateVaultItem: VaultItemGraph }>(
       `
-      mutation UpdateVaultItem($id: ID!, $input: VaultUpsertInput!) {
+      mutation UpdateVaultItem($id: ID!, $input: VaultUpsertEncInput!) {
         updateVaultItem(id: $id, input: $input) {
           ${ITEM_FIELDS}
         }
       }
       `,
-      { id: String(id), input: payload }
+      { id: String(id), input: this.toGraphInput(payload) }
     );
     return this.normalize(result.updateVaultItem);
   }
@@ -117,11 +124,38 @@ export class VaultService {
 
     return {
       id,
-      title: item.title,
-      username: item.username,
-      password: item.password,
-      url: item.url ?? undefined,
-      notes: item.notes ?? undefined
+      title: item.titleEnc,
+      username: item.usernameEnc,
+      password: item.passwordEnc,
+      url: item.urlEnc ?? undefined,
+      notes: item.notesEnc ?? undefined
     };
+  }
+
+  private toGraphInput(payload: Partial<VaultPayload>): Record<string, unknown> {
+    const mapKey = (key: keyof VaultPayload) => {
+      switch (key) {
+        case 'title':
+          return 'titleEnc';
+        case 'username':
+          return 'usernameEnc';
+        case 'password':
+          return 'passwordEnc';
+        case 'url':
+          return 'urlEnc';
+        case 'notes':
+          return 'notesEnc';
+        default:
+          return key;
+      }
+    };
+
+    const result: Record<string, unknown> = {};
+    (Object.keys(payload) as Array<keyof VaultPayload>).forEach((key) => {
+      const value = payload[key];
+      if (value === undefined) return;
+      result[mapKey(key)] = value;
+    });
+    return result;
   }
 }

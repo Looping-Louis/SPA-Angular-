@@ -28,12 +28,14 @@ describe('VaultService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body.query).toContain('query VaultItems');
 
-    const payload: VaultItem[] = [
-      { id: 1, title: 'Email', username: 'user', password: 'secret', url: undefined, notes: undefined }
+    const responseItems = [
+      { id: 1, titleEnc: 'Email', usernameEnc: 'user', passwordEnc: 'secret', urlEnc: null, notesEnc: null }
     ];
-    req.flush({ data: { vaultItems: payload } });
+    req.flush({ data: { vaultItems: responseItems } });
 
-    await expectAsync(promise).toBeResolvedTo(payload);
+    await expectAsync(promise).toBeResolvedTo([
+      { id: 1, title: 'Email', username: 'user', password: 'secret', url: undefined, notes: undefined }
+    ]);
   });
 
   it('create calls the GraphQL mutation and returns the created entry', async () => {
@@ -49,12 +51,34 @@ describe('VaultService', () => {
     const req = http.expectOne(graphqlUrl);
     expect(req.request.method).toBe('POST');
     expect(req.request.body.query).toContain('mutation CreateVaultItem');
-    expect(req.request.body.variables).toEqual({ input });
+    expect(req.request.body.variables).toEqual({
+      input: {
+        titleEnc: 'Shop',
+        usernameEnc: 'buyer',
+        passwordEnc: 'hunter2',
+        urlEnc: 'https://shop.invalid',
+        notesEnc: 'Note'
+      }
+    });
 
-    const created: VaultItem = { id: 2, ...input };
-    req.flush({ data: { createVaultItem: created } });
+    const createdResponse = {
+      id: 2,
+      titleEnc: 'Shop',
+      usernameEnc: 'buyer',
+      passwordEnc: 'hunter2',
+      urlEnc: 'https://shop.invalid',
+      notesEnc: 'Note'
+    };
+    req.flush({ data: { createVaultItem: createdResponse } });
 
-    await expectAsync(promise).toBeResolvedTo(created);
+    await expectAsync(promise).toBeResolvedTo({
+      id: 2,
+      title: 'Shop',
+      username: 'buyer',
+      password: 'hunter2',
+      url: 'https://shop.invalid',
+      notes: 'Note'
+    });
   });
 
   it('update calls the GraphQL mutation with id and payload', async () => {
@@ -63,19 +87,32 @@ describe('VaultService', () => {
     const req = http.expectOne(graphqlUrl);
     expect(req.request.method).toBe('POST');
     expect(req.request.body.query).toContain('mutation UpdateVaultItem');
-    expect(req.request.body.variables).toEqual({ id: '3', input: patch });
+    expect(req.request.body.variables).toEqual({
+      id: '3',
+      input: {
+        usernameEnc: 'new-user',
+        notesEnc: 'Updated'
+      }
+    });
 
-    const updated: VaultItem = {
+    const updatedResponse = {
+      id: 3,
+      titleEnc: 'Bank',
+      usernameEnc: 'new-user',
+      passwordEnc: 'pass',
+      urlEnc: null,
+      notesEnc: 'Updated'
+    };
+    req.flush({ data: { updateVaultItem: updatedResponse } });
+
+    await expectAsync(promise).toBeResolvedTo({
       id: 3,
       title: 'Bank',
       username: 'new-user',
       password: 'pass',
       url: undefined,
       notes: 'Updated'
-    };
-    req.flush({ data: { updateVaultItem: updated } });
-
-    await expectAsync(promise).toBeResolvedTo(updated);
+    });
   });
 
   it('delete invokes the GraphQL mutation and resolves', async () => {
