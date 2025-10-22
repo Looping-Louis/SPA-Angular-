@@ -45,21 +45,28 @@ describe('AuthService', () => {
   }
 
   it('register posts credentials to /auth/register', async () => {
-    const result = service.register('user@example.com', 'secret');
+    const promise = service.register('user@example.com', 'secret');
     const req = http.expectOne(`${apiBase}/auth/register`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ email: 'user@example.com', password: 'secret' });
-    req.flush(null);
+    req.flush({
+      totpProvisioningUri: 'otpauth://totp/MyApp:user@example.com?secret=ABC123&issuer=MyApp',
+      totpSecret: 'ABC123'
+    });
 
-    await expectResolved<RegisterResult>(result, 'SUCCESS');
+    const result = await promise;
+    expect(result.status).toBe('SUCCESS');
+    expect(result.totp?.otpauthUrl).toContain('otpauth://totp/');
+    expect(result.totp?.secret).toBe('ABC123');
   });
 
   it('register maps duplicate email errors', async () => {
-    const result = service.register('user@example.com', 'secret');
+    const promise = service.register('user@example.com', 'secret');
     const req = http.expectOne(`${apiBase}/auth/register`);
     req.flush({ code: 'EMAIL_EXISTS' }, { status: 409, statusText: 'Conflict' });
 
-    await expectResolved<RegisterResult>(result, 'EMAIL_EXISTS');
+    const result = await promise;
+    expect(result.status).toBe('EMAIL_EXISTS');
   });
 
   it('login stores session when backend returns payload', async () => {

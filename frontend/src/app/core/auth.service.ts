@@ -7,7 +7,16 @@ import { API_BASE_URL } from './api.config';
 type LoginResponse = { tmpToken: string } | SessionPayload;
 type SessionPayload = { token: string; userId: string; email: string; expiresAt?: string };
 
-export type RegisterResult = 'SUCCESS' | 'EMAIL_EXISTS' | 'SERVER_ERROR';
+export type TotpSetupPayload = {
+  otpauthUrl?: string;
+  qrCodeDataUrl?: string;
+  secret?: string;
+};
+
+export type RegisterResult =
+  | { status: 'SUCCESS'; totp?: TotpSetupPayload }
+  | { status: 'EMAIL_EXISTS' }
+  | { status: 'SERVER_ERROR' };
 export type LoginResult = 'OK' | 'TWOFA_REQUIRED' | 'INVALID_CREDENTIALS' | 'SERVER_ERROR';
 export type TotpResult = 'OK' | 'INVALID_CODE' | 'SERVER_ERROR';
 
@@ -32,14 +41,15 @@ export class AuthService {
 
   async register(email: string, password: string): Promise<RegisterResult> {
     try {
-      await firstValueFrom(
-        this.http.post<void>(`${this.apiBaseUrl}/auth/register`, { email, password })
+      const response = await firstValueFrom(
+        this.http.post<unknown>(`${this.apiBaseUrl}/auth/register`, { email, password })
       );
-      return 'SUCCESS';
+      const totp = this.extractTotp(response);
+      return { status: 'SUCCESS', totp };
     } catch (error: unknown) {
       const code = this.mapError(error);
-      if (code === 'EMAIL_EXISTS') return 'EMAIL_EXISTS';
-      return 'SERVER_ERROR';
+      if (code === 'EMAIL_EXISTS') return { status: 'EMAIL_EXISTS' };
+      return { status: 'SERVER_ERROR' };
     }
   }
 
@@ -133,6 +143,29 @@ export class AuthService {
     }
   }
 
+  private extractTotp(response: unknown): TotpSetupPayload | undefined {
+    if (!response || typeof response !== 'object') return undefined;
+    const data = response as Record<string, unknown>;
+
+    const otpauthUrl = this.pickString(data, [
+      'totpProvisioningUri',
+      'totpUri',
+      'otpauth',
+      'otpauthUrl',
+      'otpauth_url'
+    ]);
+    const qrCodeDataUrl = this.pickString(data, [
+      'totpQrCodeDataUrl',
+      'totpQrCode',
+      'qrCodeDataUrl',
+      'qr'
+    ]);
+    const secret = this.pickString(data, ['totpSecret', 'secret']);
+
+    if (!otpauthUrl && !qrCodeDataUrl && !secret) return undefined;
+    return { otpauthUrl, qrCodeDataUrl, secret };
+  }
+
   private mapError(error: unknown): ErrorCode {
     if (error instanceof HttpErrorResponse) {
       if (error.status === 409) return 'EMAIL_EXISTS';
@@ -143,6 +176,16 @@ export class AuthService {
       }
     }
     return 'SERVER_ERROR';
+  }
+
+  private pickString(source: Record<string, unknown>, keys: string[]): string | undefined {
+    for (const key of keys) {
+      const value = source[key];
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value;
+      }
+    }
+    return undefined;
   }
 
   private extractBackendCode(error: HttpErrorResponse): string | undefined {
