@@ -56,6 +56,9 @@ describe('AuthService', () => {
 
     const result = await promise;
     expect(result.status).toBe('SUCCESS');
+    if (result.status !== 'SUCCESS') {
+      return fail('expected registration to succeed');
+    }
     expect(result.totp?.otpauthUrl).toContain('otpauth://totp/');
     expect(result.totp?.secret).toBe('ABC123');
   });
