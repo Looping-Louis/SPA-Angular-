@@ -22,25 +22,6 @@ type VaultDraft = Partial<VaultItem> & { id?: number };
       </button>
     </header>
 
-    <section class="generator">
-      <div class="info">
-        <h2>Passwort-Generator</h2>
-        <p>Erzeuge starke Passwörter und kopiere sie direkt in deine Einträge.</p>
-      </div>
-      <div class="controls">
-        <label>
-          Länge <span>{{ genLen }} Zeichen</span>
-          <input type="range" min="8" max="64" [(ngModel)]="genLen">
-        </label>
-        <div class="row">
-          <button type="button" (click)="generated = generate(genLen)">Erzeugen</button>
-          <input class="generated" [value]="generated" placeholder="Noch nichts erstellt…" readonly>
-          <button type="button" class="outline" (click)="copy(generated)" [disabled]="!generated">Kopieren</button>
-        </div>
-        <p class="copy-status" *ngIf="copyMessage" [class.error]="copyMessage.includes('fehlgeschlagen')">{{ copyMessage }}</p>
-      </div>
-    </section>
-
     <p class="error-banner" *ngIf="listError">{{ listError }}</p>
 
     <ng-container *ngIf="!loadingList; else loadingState">
@@ -146,19 +127,6 @@ type VaultDraft = Partial<VaultItem> & { id?: number };
     .outline{background:transparent;border:1px solid #d1d5db;color:#111827;border-radius:999px;padding:8px 16px;cursor:pointer}
     button:disabled{opacity:.4;cursor:not-allowed}
 
-    .generator{display:flex;flex-wrap:wrap;gap:24px;padding:24px;border:1px solid #e5e7eb;border-radius:20px;background:#f9fafb}
-    .generator .info{flex:1 1 220px}
-    .generator .info h2{margin:0 0 6px;font-size:20px}
-    .generator .info p{margin:0;color:#6b7280}
-    .generator .controls{flex:1 1 320px;display:flex;flex-direction:column;gap:12px}
-    .generator label{display:flex;justify-content:space-between;align-items:center;font-weight:600}
-    .generator label span{color:#6b7280;font-weight:500}
-    .generator input[type="range"]{width:100%}
-    .generator .row{display:flex;gap:12px;flex-wrap:wrap}
-    .generator .generated{flex:1;min-width:200px;padding:10px 12px;border:1px solid #d1d5db;border-radius:999px;background:#fff;font-family:monospace}
-    .copy-status{margin:0;color:#16a34a;font-size:13px;font-weight:500}
-    .copy-status.error{color:#dc2626}
-
     .error-banner{padding:12px 16px;border-radius:12px;background:#fee2e2;color:#b91c1c}
     .error-banner.small{margin:0;background:#fef2f2}
 
@@ -201,15 +169,11 @@ export class VaultComponent implements OnInit {
   current: VaultDraft | null = null;
   query = '';
   show: Record<number, boolean> = {};
-  generated = '';
-  genLen = 16;
-  copyMessage = '';
   listError = '';
   formError = '';
   loadingList = false;
   saving = false;
   deletingId: number | null = null;
-  private copyTimer: ReturnType<typeof setTimeout> | null = null;
 
   async ngOnInit(): Promise<void> {
     await this.loadEntries();
@@ -326,16 +290,9 @@ export class VaultComponent implements OnInit {
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      this.setCopyMessage('Kopiert!');
     } catch {
-      this.setCopyMessage('Kopieren fehlgeschlagen.');
+      // Clipboard API might be unavailable; ignore silently.
     }
-  }
-
-  private setCopyMessage(message: string): void {
-    this.copyMessage = message;
-    if (this.copyTimer) clearTimeout(this.copyTimer);
-    this.copyTimer = setTimeout(() => this.copyMessage = '', 2500);
   }
 
   private normalizeOptional(value: string | undefined): string | undefined {
