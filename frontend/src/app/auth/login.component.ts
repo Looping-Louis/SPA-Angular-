@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
@@ -45,6 +45,7 @@ import { CommonModule } from '@angular/common';
 export class LoginComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   email = '';
   password = '';
@@ -109,6 +110,7 @@ export class LoginComponent implements OnInit {
       }
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 }
