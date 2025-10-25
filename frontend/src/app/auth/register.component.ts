@@ -36,12 +36,6 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
         Ohne diesen Schritt kannst du dich nicht anmelden.
       </p>
       <img *ngIf="totpQrCode" [src]="totpQrCode" alt="TOTP QR Code">
-      <p class="info" *ngIf="totpLink">
-        <a [href]="totpLink" target="_blank" rel="noopener">{{ totpLink }}</a>
-      </p>
-      <p class="info" *ngIf="totpSecret">
-        Geheimcode: <strong>{{ totpSecret }}</strong>
-      </p>
       <button class="secondary" type="button" (click)="goToLogin()">Weiter zum Login</button>
     </section>
   </section>
@@ -73,8 +67,6 @@ export class RegisterComponent {
   loading = false;
   registrationCompleted = false;
   totpQrCode: SafeResourceUrl | null = null;
-  totpLink: string | null = null;
-  totpSecret: string | null = null;
 
   async submit(): Promise<void> {
     if (this.loading) return;
@@ -114,8 +106,6 @@ export class RegisterComponent {
   private applyTotp(totp?: TotpSetupPayload): void {
     if (!totp) {
       this.totpQrCode = null;
-      this.totpLink = null;
-      this.totpSecret = null;
       this.cdr.markForCheck();
       return;
     }
@@ -127,8 +117,6 @@ export class RegisterComponent {
     } else {
       this.totpQrCode = null;
     }
-    this.totpLink = totp.otpauthUrl ?? null;
-    this.totpSecret = totp.secret ?? null;
     this.cdr.markForCheck();
   }
 }
