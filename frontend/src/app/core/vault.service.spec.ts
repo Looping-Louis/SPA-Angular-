@@ -1,3 +1,4 @@
+/// <reference types="jasmine" />
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { API_GRAPHQL_URL } from './api.config';

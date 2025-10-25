@@ -1,21 +1,20 @@
+/// <reference types="jasmine" />
 import { provideRouter } from '@angular/router';
-import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AppComponent } from './app.component';
 import { AuthService } from './core/auth.service';
 
 describe('AppComponent', () => {
-  const authStub = {
-    isLoggedIn: jasmine.createSpy('isLoggedIn').and.returnValue(false),
-    logout: jasmine.createSpy('logout'),
-  };
+  let authStub: jasmine.SpyObj<AuthService>;
 
   beforeEach(async () => {
+    authStub = jasmine.createSpyObj('AuthService', ['isLoggedIn', 'logout']);
+    (authStub.isLoggedIn as jasmine.Spy).and.returnValue(false);
+
     await TestBed.configureTestingModule({
-      imports: [AppComponent],
+      imports: [AppComponent], // oder declarations: [AppComponent] bei älteren Projekten
       providers: [
-        provideZonelessChangeDetection(),
-        provideRouter([]),
+        provideRouter([]), // oder RouterTestingModule.withRoutes([]) bei älteren Projekten
         { provide: AuthService, useValue: authStub }
       ]
     }).compileComponents();
@@ -35,7 +34,7 @@ describe('AppComponent', () => {
   it('hides the topbar when the user is logged out', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
+    const compiled: HTMLElement = fixture.nativeElement;
     expect(compiled.querySelector('.topbar')).toBeNull();
   });
 });
