@@ -71,7 +71,7 @@ export class TotpSetupComponent {
       const payload = await this.auth.requestTotpSetup();
       if (!payload) {
         this.clearTotp();
-        this.error = 'Keine TOTP-Daten verfügbar. Bitte versuche es später erneut.';
+        this.error = 'Der Server stellt aktuell keinen QR-Code bereit. Bitte versuche es später erneut oder kontaktiere den Support.';
         return;
       }
       this.applyTotp(payload);

@@ -93,10 +93,22 @@ export class AuthService {
   }
 
   async requestTotpSetup(): Promise<TotpSetupPayload | null> {
-    const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/auth/totp-setup`, {})
-    );
-    return this.extractTotp(response) ?? null;
+    const paths = ['totp-setup', 'totp/setup'];
+    for (const path of paths) {
+      try {
+        const response = await firstValueFrom(
+          this.http.post<unknown>(`${this.apiBaseUrl}/auth/${path}`, {})
+        );
+        const totp = this.extractTotp(response);
+        if (totp) return totp;
+      } catch (error: unknown) {
+        if (error instanceof HttpErrorResponse && error.status === 404) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    return null;
   }
 
   isLoggedIn(): boolean {

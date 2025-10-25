@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService, TotpSetupPayload } from '../core/auth.service';
@@ -64,6 +64,7 @@ export class RegisterComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
+  private cdr = inject(ChangeDetectorRef);
 
   email = '';
   password = '';
@@ -102,6 +103,7 @@ export class RegisterComponent {
       this.error = 'Registrierung fehlgeschlagen.';
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -114,6 +116,7 @@ export class RegisterComponent {
       this.totpQrCode = null;
       this.totpLink = null;
       this.totpSecret = null;
+      this.cdr.markForCheck();
       return;
     }
     if (totp.qrCodeDataUrl) {
@@ -126,5 +129,6 @@ export class RegisterComponent {
     }
     this.totpLink = totp.otpauthUrl ?? null;
     this.totpSecret = totp.secret ?? null;
+    this.cdr.markForCheck();
   }
 }

@@ -165,4 +165,19 @@ describe('AuthService', () => {
     expect(result?.otpauthUrl).toContain('otpauth://totp/');
     expect(result?.secret).toBe('SECRETCODE');
   });
+
+  it('requestTotpSetup falls back to /auth/totp/setup when the hyphenated route is missing', async () => {
+    const promise = service.requestTotpSetup();
+    const first = http.expectOne(`${apiBase}/auth/totp-setup`);
+    first.flush({}, { status: 404, statusText: 'Not Found' });
+
+    const fallback = http.expectOne(`${apiBase}/auth/totp/setup`);
+    fallback.flush({
+      otpauthUrl: 'otpauth://totp/MyApp:user@example.com?secret=FALLBACK',
+      secret: 'FALLBACK'
+    });
+
+    const result = await promise;
+    expect(result?.secret).toBe('FALLBACK');
+  });
 });
