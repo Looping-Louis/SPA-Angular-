@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { VaultItem, VaultPayload, VaultService } from '../core/vault.service';
 
@@ -163,6 +163,7 @@ type VaultDraft = Partial<VaultItem> & { id?: number };
 })
 export class VaultComponent implements OnInit {
   private vault = inject(VaultService);
+  private cdr = inject(ChangeDetectorRef);
   @ViewChild('entryDialog') private entryDialog?: ElementRef<HTMLDialogElement>;
 
   entries: VaultItem[] = [];
@@ -197,6 +198,7 @@ export class VaultComponent implements OnInit {
       this.entries = [];
     } finally {
       this.loadingList = false;
+      this.cdr.markForCheck();
     }
   }
 
