@@ -151,4 +151,18 @@ describe('AuthService', () => {
     expect(storage['pm_session_v2']).toBeUndefined();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
   });
+
+  it('requestTotpSetup posts to /auth/totp-setup and returns payload', async () => {
+    const promise = service.requestTotpSetup();
+    const req = http.expectOne(`${apiBase}/auth/totp-setup`);
+    expect(req.request.method).toBe('POST');
+    req.flush({
+      totpProvisioningUri: 'otpauth://totp/MyApp:user@example.com?secret=SECRETCODE',
+      totpSecret: 'SECRETCODE'
+    });
+
+    const result = await promise;
+    expect(result?.otpauthUrl).toContain('otpauth://totp/');
+    expect(result?.secret).toBe('SECRETCODE');
+  });
 });

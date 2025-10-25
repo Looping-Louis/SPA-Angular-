@@ -92,6 +92,13 @@ export class AuthService {
     }
   }
 
+  async requestTotpSetup(): Promise<TotpSetupPayload | null> {
+    const response = await firstValueFrom(
+      this.http.post<unknown>(`${this.apiBaseUrl}/auth/totp-setup`, {})
+    );
+    return this.extractTotp(response) ?? null;
+  }
+
   isLoggedIn(): boolean {
     if (!this.session) return false;
     if (!this.session.expiresAt) return true;
