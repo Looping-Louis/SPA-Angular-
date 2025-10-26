@@ -222,6 +222,7 @@ export class VaultComponent implements OnInit {
     this.entryDialog?.nativeElement.close();
     this.current = null;
     this.formError = '';
+    this.cdr.markForCheck();
   }
 
   async save(): Promise<void> {
@@ -253,6 +254,7 @@ export class VaultComponent implements OnInit {
       this.formError = 'Speichern fehlgeschlagen.';
     } finally {
       this.saving = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -267,6 +269,7 @@ export class VaultComponent implements OnInit {
       this.listError = 'Eintrag konnte nicht gelöscht werden.';
     } finally {
       this.deletingId = null;
+      this.cdr.markForCheck();
     }
   }
 
