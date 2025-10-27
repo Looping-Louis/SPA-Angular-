@@ -12,9 +12,9 @@ describe('AppComponent', () => {
     (authStub.isLoggedIn as jasmine.Spy).and.returnValue(false);
 
     await TestBed.configureTestingModule({
-      imports: [AppComponent], // oder declarations: [AppComponent] bei älteren Projekten
+      imports: [AppComponent], 
       providers: [
-        provideRouter([]), // oder RouterTestingModule.withRoutes([]) bei älteren Projekten
+        provideRouter([]), 
         { provide: AuthService, useValue: authStub }
       ]
     }).compileComponents();
