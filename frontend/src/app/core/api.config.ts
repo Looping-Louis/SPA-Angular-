@@ -2,7 +2,7 @@ import { InjectionToken } from '@angular/core';
 
 /** Production endpoints (Render) - fest verdrahtet */
 export const GQL_URL = 'https://password-graphql.onrender.com/graphql';
-export const BACKEND_URL = 'https://password-backend-fc0k.onrender.com/api';
+export const BACKEND_URL = 'https://password-backend-721738115352.europe-west1.run.app';
 
 /**
  * Base URL of the backend API. Centralised in an injection token so the value
