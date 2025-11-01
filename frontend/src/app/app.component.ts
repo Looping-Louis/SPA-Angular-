@@ -14,6 +14,7 @@ import { CommonModule } from '@angular/common';
       <a routerLink="/totp-setup">TOTP</a>
     </nav>
     <div class="spacer"></div>
+    <span class="user-email" *ngIf="auth.getUserEmail() as email">{{ email }}</span>
     <button class="link" (click)="logout()">Logout</button>
   </header>
   <main class="container">
@@ -29,6 +30,7 @@ import { CommonModule } from '@angular/common';
     .link{background:transparent;border:none;color:#2563eb;cursor:pointer}
     .container{max-width:980px;margin:32px auto;padding:0 16px}
     .spacer{flex:1}
+    .user-email{margin-right:12px;color:#374151;font-size:14px}
     .legal-footer{max-width:980px;margin:0 auto 24px;padding:0 16px;text-align:right;font-size:14px;color:#6b7280}
     .legal-footer a{color:#6b7280;text-decoration:none}
     .legal-footer a:hover{color:#2563eb;text-decoration:underline}
