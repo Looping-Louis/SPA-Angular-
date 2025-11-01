@@ -29,7 +29,7 @@ export class AuthService {
   private readonly SESSION_KEY = 'pm_session_v2';
   private readonly isBrowser = typeof window !== 'undefined';
   private session: SessionState | null;
-  private readonly userEmailSubject: BehaviorSubject<string | null>;
+  private readonly userEmailSubject = new BehaviorSubject<string | null>(null);
   private tmpToken: string | null = null;
 
   constructor(
@@ -38,7 +38,7 @@ export class AuthService {
     @Inject(API_BASE_URL) private readonly apiBaseUrl: string
   ) {
     this.session = this.restoreSession();
-    this.userEmailSubject = new BehaviorSubject<string | null>(this.session?.email ?? null);
+    this.userEmailSubject.next(this.session?.email ?? null);
   }
 
   async register(email: string, password: string): Promise<RegisterResult> {
