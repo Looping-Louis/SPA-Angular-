@@ -1,12 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth.service';
-import { CommonModule } from '@angular/common';
+import { AsyncPipe, CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule],
+  imports: [RouterOutlet, RouterLink, CommonModule, AsyncPipe],
   template: `
   <header class="topbar" *ngIf="auth.isLoggedIn()">
     <nav>
@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
       <a routerLink="/totp-setup">TOTP</a>
     </nav>
     <div class="spacer"></div>
-    <span class="user-email" *ngIf="auth.getUserEmail() as email">{{ email }}</span>
+    <span class="user-email" *ngIf="userEmail$ | async as email">{{ email }}</span>
     <button class="link" (click)="logout()">Logout</button>
   </header>
   <main class="container">
@@ -38,5 +38,6 @@ import { CommonModule } from '@angular/common';
 })
 export class AppComponent {
   auth = inject(AuthService);
+  readonly userEmail$ = this.auth.userEmail$;
   logout(){ this.auth.logout(); }
 }

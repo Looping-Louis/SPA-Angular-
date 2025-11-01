@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { BehaviorSubject, firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from './api.config';
 
 type LoginResponse = { tmpToken: string } | SessionPayload;
@@ -29,6 +29,7 @@ export class AuthService {
   private readonly SESSION_KEY = 'pm_session_v2';
   private readonly isBrowser = typeof window !== 'undefined';
   private session: SessionState | null;
+  private readonly userEmailSubject: BehaviorSubject<string | null>;
   private tmpToken: string | null = null;
 
   constructor(
@@ -37,6 +38,7 @@ export class AuthService {
     @Inject(API_BASE_URL) private readonly apiBaseUrl: string
   ) {
     this.session = this.restoreSession();
+    this.userEmailSubject = new BehaviorSubject<string | null>(this.session?.email ?? null);
   }
 
   async register(email: string, password: string): Promise<RegisterResult> {
@@ -125,6 +127,8 @@ export class AuthService {
     return this.session?.email ?? null;
   }
 
+  readonly userEmail$ = this.userEmailSubject.asObservable();
+
   logout(): void {
     this.clearSession();
     this.router.navigateByUrl('/login');
@@ -140,6 +144,7 @@ export class AuthService {
 
   private persistSession(payload: SessionPayload): void {
     this.session = payload;
+    this.userEmailSubject.next(payload.email ?? null);
     if (!this.isBrowser) return;
     window.localStorage.setItem(this.SESSION_KEY, JSON.stringify(payload));
   }
@@ -157,6 +162,7 @@ export class AuthService {
   private clearSession(): void {
     this.session = null;
     this.tmpToken = null;
+    this.userEmailSubject.next(null);
     if (this.isBrowser) {
       window.localStorage.removeItem(this.SESSION_KEY);
     }
